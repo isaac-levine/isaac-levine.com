@@ -40,7 +40,6 @@ export const projects: Project[] = [
       "PostgreSQL",
     ],
     slug: "dealwire",
-    githubLink: "https://github.com/isaac-levine/dealwire",
   },
   {
     href: "https://frontstep.ai?utm_source=portfolio",
