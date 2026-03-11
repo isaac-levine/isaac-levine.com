@@ -1,3 +1,4 @@
+import dealwireImg from "/public/images/dealwire-dashboard.png";
 import fireplaceImg from "/public/images/fireplace-dashboard.png";
 import boilerbaseImg from "/public/images/boilerbase-dashboard.png";
 import intellibetImg from "/public/images/intellibet-dashboard.png";
@@ -23,6 +24,24 @@ export interface Project {
 }
 
 export const projects: Project[] = [
+  {
+    href: "https://dealwire.ai?utm_source=portfolio",
+    title: "dealwire.ai",
+    description:
+      "Agentic deal flow platform for commercial real estate investors — autonomous screening, underwriting, and public data intelligence, all driven through your inbox.",
+    thumbnail: dealwireImg,
+    stack: [
+      "Next.js",
+      "NestJS",
+      "TypeScript",
+      "OpenAI",
+      "Microsoft Graph",
+      "Prisma",
+      "PostgreSQL",
+    ],
+    slug: "dealwire",
+    githubLink: "https://github.com/isaac-levine/dealwire",
+  },
   {
     href: "https://frontstep.ai?utm_source=portfolio",
     title: "frontstep.ai",
