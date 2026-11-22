@@ -2,7 +2,7 @@ import { BlogLayout } from "@/components/BlogLayout";
 
 export const meta = {
   date: "2025-11-28",
-  title: "[frontstep.ai] How I Hijacked Zillow.com's Native Chat System",
+  title: "[frontstep.ai] How I hijacked Zillow.com's native chat system",
 };
 
 export default (props) => <BlogLayout meta={meta} {...props} />;
@@ -23,7 +23,7 @@ This presented a challenge: realtors were almost exclusively prequalifying their
 
 What Zillow did do however for all clients, regardless of what plan they were on, was send them email notifications every single time they received a new lead or message on the platform. I would soon find out that we could use this simple email notification to get our AI-generated responses to populate directly into the Zillow platform, enabling us to build an **AI agent that could both read and write to Zillow's native chat interface.**
 
-## The Idea
+## The idea
 
 I asked some of our early beta testers to forward me a few of these notifications from Zillow, and as soon as I saw the words _"You can also reply directly to this email"_ at the bottom of the email, I realized there might be a way forward.
 
@@ -36,7 +36,7 @@ The workaround was so simple that I couldn't believe it actually worked. It was 
 
 From there, we were able to build out the main features of the platform and AI agent.
 
-## How it Works
+## How it works
 
 First, we helped our beta testers to add a forwarding rule that would automatically route all emails from the `@convo.zillow.com` subdomain to our mail server address `inbound@leads.frontstep.ai`. 
 
@@ -44,7 +44,7 @@ That forward email was then received by a mail server that we set up using Mailg
 
 These normalized messages would then be processed by the MessageProcessor, which did most of the heavy-lifting. Every 30 seconds, it would pop all normalized messages off the queue, group them by Conversation and Lead if they already existed (i.e. this was a message for a pre-existing conversation) or create new ones if necessary, resolve the Property in the database that this Conversation was about or create a new one if necessary, mark qualification questions as answered (more on that below), generate a response based on the remaining unanswered questions, and finally, either generate and send an appropriate response based on the conversation context and the unanswered qualification questions, or mark the Lead and Conversation as fully qualified and trigger a separate code path to send a notification email over to the realtor that the lead was ready for a tour! 
 
-## High-Level Architecture
+## High-level architecture
 
 Below is a very high-level view of how this process worked from the Zillow email notification all the way to a response propagating back into Zillow.
 
@@ -82,11 +82,11 @@ Below is a very high-level view of how this process worked from the Zillow email
     Email-->>Processor: Delivery confirmed
     Processor->>Queue: Mark as processed`} />
 
-## Important Components 
+## Important components
 
 Here's a more detailed look at how a few of the components above actually work. 
 
-### Webhook Handler
+### Webhook handler
 
 The webhook handler receives the parsed email data from Mailgun and performs initial processing:
 
@@ -96,7 +96,7 @@ The webhook handler receives the parsed email data from Mailgun and performs ini
 
 The handler responds quickly with a 200 OK to Mailgun to avoid requests hanging or timing out, which would cause a storm of retries. This was a key design constraint - the Mailgun component was completely out of our control, and the platform offered limited observability into how things like timeouts were configured.
 
-### Message Queue
+### Message queue
 
 The message queue decouples email ingestion from message processing. This design allows:
 
@@ -104,7 +104,7 @@ The message queue decouples email ingestion from message processing. This design
 - Scalability: In the future, multiple processors could consume messages in parallel, if we wanted to scale up the process to make it faster.
 - Resilience: Failed processing attempts can be retried without losing the original message.
 
-### Message Processor
+### Message processor
 
 The message processor polls normalized messages off the queue every 30 seconds and handles the core business logic:
 
@@ -113,7 +113,7 @@ The message processor polls normalized messages off the queue every 30 seconds a
 2. Update Conversation State: Saves the incoming message to the database, maintaining conversation history. Also updates the conversation object by recording answers to specific qualification questions or updating overall status if fully qualified.
 3. AI Integration: Sends the conversation context to the AI service to generate an appropriate response.
 
-### AI Service
+### AI service
 
 The AI service is responsible for generating intelligent, context-aware responses:
 
@@ -122,7 +122,7 @@ The AI service is responsible for generating intelligent, context-aware response
 - Response Generation: Creates a natural, helpful response that either asks the next unanswered question or acknowledges completed information
 - Guardrails: Ensures responses are appropriate, professional, and aligned with the realtor's configured questions. More on this below.
 
-### Email Service
+### Email service
 
 Once the AI generates a response, the email service handles delivery:
 
@@ -132,13 +132,13 @@ Once the AI generates a response, the email service handles delivery:
 
 After successful delivery, the processor marks the message as processed in the queue, completing the cycle.
 
-## Design Decisions
+## Design decisions
 
-### Asynchronous Processing
+### Asynchronous processing
 
 By using a message queue, we ensure that email ingestion (which needs to respond quickly to Mailgun) is decoupled from message processing (which involves AI generation and can take longer). This prevents webhook timeouts and allows the system to handle bursts of incoming leads. We were also thinking about future scalability - decoupling the webhook and the processor with a queue between them would allow us to add as many listeners as needed down the road. 
 
-### AI Guardrails
+### AI guardrails
 
 From the very beginning, Noah and I were thinking about FHA (Fair Housing Act) laws and wanted to make sure that frontstep.ai would _never_ say anything it wasn't supposed to say (e.g. asking about race, income, disability, or any other protected classes that you aren't allowed to ask about in the prequalification process). We found [OpenAI's Guardrails](https://guardrails.openai.com/) to be very effective and easy to use for this purpose. We had several guardrails that every message we generated had to pass through: 1. It could not ask about any protected classes under FHA, 2. It could not make anything up about the property that it did not explicitly know from the property notes stored in the database (e.g. number of bedrooms or bathrooms), and 3. It could not go off the rails and start saying anything it wanted, it had to reply by concisely acknowledging their answer, and asking a new question. In the 300+ conversations frontstep.ai handled, it never violated any of these 3 important guardrails we put in place.
 

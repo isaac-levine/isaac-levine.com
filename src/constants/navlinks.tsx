@@ -20,6 +20,11 @@ export const navlinks = [
     icon: IconFileText,
   },
   {
+    href: "/projects",
+    label: "Projects",
+    icon: IconFolder,
+  },
+  {
     href: "/contact",
     label: "Contact",
     icon: IconMail,

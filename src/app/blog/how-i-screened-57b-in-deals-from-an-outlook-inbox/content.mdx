@@ -1,0 +1,213 @@
+import { BlogLayout } from "@/components/BlogLayout";
+
+export const meta = {
+  date: "2026-11-22",
+  title:
+    "[dealwire.ai] How I screened $57 billion in real estate deals from an Outlook inbox",
+};
+
+export default (props) => <BlogLayout meta={meta} {...props} />;
+
+## Introduction
+
+Nobody needs one more dashboard to check. That idea has been behind most of what I've built: meet the customer where they already are, and do the work there.
+
+For real estate acquisitions teams, that place is their Outlook inbox, so that's where dealwire lives. [^1] Since January it has read about 22,000 broker emails for two teams, covering roughly $57 billion in asking prices. [^2] 71% of those deals were screened out automatically, and nobody on either team had to log into anything for that to happen.
+
+This post is about what it takes to build a product that way. Dealwire reads the inbox, it answers in the inbox, and it even gets configured from the inbox.
+
+## Context
+
+If you read my post on [how frontstep.ai worked inside Zillow's chat](/blog/how-i-hijacked-zillows-native-chat-system), this will sound familiar. Frontstep worked because realtors never had to leave the place they were already having the conversation. I ended that post by saying the only thing that really matters is how customers interact with the app and whether it solves their problem in a convenient way. Dealwire is the same bet with a different inbox.
+
+{/* TODO(Isaac): two or three sentences on how you and Noah landed on this problem and who the first team was (without naming them). */}
+
+Acquisitions teams at real estate investment firms live in Outlook. Brokers blast them with deals all day - teasers, offering memorandums, "just listed" emails, "call for offers" reminders. Across the two teams using dealwire, that works out to about 90 deal emails every business day. Most of them aren't a fit. Wrong market, wrong size, wrong property type, or a building the firm already owns. But somebody still has to open each one, skim the PDF, and decide. It's the same prequalification problem we saw with realtors, just with bigger numbers attached.
+
+There's a well-known design book called _The Best Interface Is No Interface_ [^3] whose first principle is to embrace typical processes instead of screens. That's a pretty good description of what we built. The typical process here is: email comes in, someone reads it, someone decides, someone replies or files it away. Dealwire does those steps in the same place and in the same order. There is a web dashboard for people who want one, but the product works without anyone ever opening it.
+
+## What it looks like
+
+From the user's seat, nothing new shows up on their screen except better email.
+
+A broker sends a deal. Shortly after, one of three things happens, depending on how the firm has set things up:
+
+- **A reply appears in the same thread**, sent to themselves. It has a summary of the deal, a short narrative of what's being sold and why, a yes or no with a one-sentence reason, and links to the attachments, the deal room, and the confidentiality agreement if there is one.
+- **A reply to the broker is sitting in their Drafts folder**, written with that broker's history in mind and asking about whatever was missing from the email. They can edit it, send it, or ignore it.
+- **The whole conversation moves itself into a "Passed Deals" folder**, because it didn't meet their criteria and they never needed to see it.
+
+All of this is customizable. Each firm sets up whatever deal buckets and folders make sense for how they work, picks what should happen for each one, and dealwire just works with it. "Passed Deals" is only the default.
+
+Then on a schedule each firm picks, a digest arrives with everything that was screened since the last one.
+
+That's the whole product surface. A reply, a folder, a draft, and a digest.
+
+## How it works
+
+### Reading the inbox
+
+When someone signs in with their Microsoft account, we get OAuth access to their mailbox and create a Microsoft Graph subscription on their inbox. From then on, Graph sends a webhook to our backend every time a new message lands.
+
+Two things about this were more work than I expected.
+
+First, Graph subscriptions on mail expire after about three days. If you don't renew them, your product just quietly stops working and nobody gets an error. So there's a scheduled job that runs a few times a day, renews anything expiring in the next 24 hours, recreates subscriptions that Microsoft dropped on its own, and creates them for anyone who connected their account but somehow doesn't have one.
+
+Second, webhooks get delivered more than once. So the Graph message ID is a unique key on the `deals` table, and saving a deal is an upsert on that key. A duplicate notification or a retry from the queue lands on the same row instead of producing a second analysis and a second reply in someone's inbox.
+
+### High-level architecture
+
+Here's the path one email takes from the broker hitting send to the reply showing up in the thread.
+
+<Mermaid chart={`sequenceDiagram
+    participant Broker
+    participant Outlook as Outlook Inbox
+    participant Graph as Microsoft Graph
+    participant API as Webhook Handler
+    participant S3 as S3
+    participant Queue as SQS Queue
+    participant Worker as Email Processor
+    participant LLM as LLMs
+    participant DB as Postgres
+
+    Broker->>Outlook: Deal email + PDF
+    Outlook->>Graph: New message
+    Graph->>API: POST /webhooks/microsoft
+    API->>Graph: Fetch message
+    API->>API: Is this a deal?<br/>(regex, then a small model)
+    API->>S3: Store attachments
+    API->>Queue: Enqueue normalized email
+    Queue->>Worker: Process email
+    Worker->>Worker: Extract text<br/>(body, images, PDFs)
+    Worker->>DB: Upsert deal on message ID
+    Worker->>LLM: Extract structured fields
+    Worker->>LLM: Assign a screening bucket
+    Worker->>DB: Save screening result
+    Worker->>Graph: Reply in thread
+    Worker->>Graph: Move conversation or create draft
+    Graph->>Outlook: Reply, folder move, draft`} />
+
+The webhook handler does the cheap part, which is figuring out whether the email is a deal at all, and pushes everything else onto a queue. The expensive part (parsing PDFs, reading images, several model calls) happens in a worker on the other side. If a model provider is slow or down, emails wait in the queue instead of getting lost.
+
+Emails that aren't deals never get stored anywhere. Dealwire only keeps what it's actually going to screen.
+
+### Deciding what's a deal
+
+Most of what lands in an inbox isn't a deal, so the first job is throwing things away cheaply. There are three filters and they run in order of cost:
+
+1. **Skip keywords.** Literal phrases the firm never wants to see, like "NNN" or "single tenant". These are matched with a regex, no model involved.
+2. **Known properties.** The names and addresses of buildings the firm already owns. Also a regex, with some handling so that "412 S Elm St" matches "412 South Elm Street" but not "2412 S Elm St".
+3. **A small model.** It only sees the subject line and the first 500 characters of the body, and it's told to say no when it's unsure.
+
+The order matters. A model that only reads the first 500 characters can miss an exact phrase buried lower down, and a regex can't. So anything that can be expressed as an exact match gets matched exactly, and the model is saved for the judgment call.
+
+### Screening
+
+Once an email is a deal, the worker pulls text out of everything: the HTML body, images embedded in the body (a lot of broker teasers are just one big image), and PDF attachments. Scanned PDFs with no text layer fall back to a vision model reading the first ten pages.
+
+Then two model calls happen in sequence. The first extracts structured fields: asking price, cap rate, NOI, unit count, square footage, property type. The second does the screening, and it gets those extracted fields as its primary source of truth along with the raw text.
+
+The part I like most here is what the model is and isn't allowed to do. Each firm has a ranked list of screening buckets, something like "Hot Deal", "Good Fit", "Pass". Each bucket has a plain-English description of what belongs in it. The model's only job is to pick a bucket and give a one-sentence reason. It never decides what happens next. The bucket's own settings decide that: whether it counts as a yes or a no, and which action to take. If the model comes back with a bucket name that doesn't exist, the deal falls to the last bucket in the list.
+
+So the model classifies and the code acts. That split is what made me comfortable letting software move and send email in a real person's inbox.
+
+### Answering in the inbox
+
+A bucket can carry one of four actions: reply in the thread, draft a reply to the broker, move the conversation to a folder, or do nothing.
+
+Writing to the same place you're reading from has some sharp edges:
+
+- **The agent sees its own mail.** Its replies and its digests land in the inbox it's subscribed to, which fires the webhook again. So anything sent by the inbox owner gets skipped, digests are skipped by subject, and every reply we send is stamped with a custom header so our own messages are always identifiable.
+- **Moving a message changes its ID.** If you move the email to "Passed Deals" first and then try to reply to it, the ID you're holding no longer exists. Replies go out first, then the move.
+- **Outlook needs a moment.** To move the whole conversation, the reply we just sent has to be findable, and it isn't for a few seconds. The worker waits before moving the thread.
+
+The broker draft is where the data starts compounding. Every broker who sends a deal becomes a contact, and every deal is tied to the broker who sent it. So when dealwire drafts a reply, it knows how many deals this broker has sent before, which ones the firm liked, and which fields were missing from this email, and it writes the draft accordingly.
+
+The digest gets sent from the user's own Outlook account through Graph. It shows up like mail from a colleague instead of a notification from a vendor.
+
+## Configuring it from the inbox
+
+This is my favorite part of the system, and the best evidence I have for the idea at the top of this post.
+
+Every deal in the digest has two small links under it. Deals that passed get "Skip deals like this", deals that were rejected get "Accept deals like this", and both get "Mute this deal". Clicking one opens a pre-filled email to a dedicated screening address. The user hits send. On the other end, an agent reads that email and has tools to change that firm's rules: add a skip keyword, add a known property, tighten or loosen the criteria, rewrite a bucket's description, mute a specific property. Then it replies confirming exactly what it changed.
+
+Users can also just write to it. "We own 412 Elm Street." "Stop sending me NNN deals." "New York only." It figures out which kind of rule that is and updates it.
+
+<Mermaid chart={`flowchart LR
+    A[Digest lands<br/>in the inbox] --> B[User clicks<br/>Skip deals like this]
+    B --> C[Pre-filled email<br/>to the screening address]
+    C --> D[Agent edits<br/>the firm's rules]
+    D --> E[Agent replies with<br/>exactly what changed]
+    D --> F[Next broker email<br/>is screened differently]
+    F --> A`} />
+
+So even the settings page is an email. There's no form to find, no dropdown for "property type", and nothing to learn. They complain about a deal in the same place they'd complain to an analyst, and the system adjusts.
+
+What makes this possible is that a firm's entire buy box is just data. It's one row of text fields and a ranked list of buckets:
+
+<Mermaid chart={`erDiagram
+    organizations ||--|| screening_preferences : has
+    organizations ||--o{ screening_buckets : ranks
+    organizations ||--o{ deals : receives
+    deals ||--|| initial_screenings : gets
+    deals ||--o{ documents : includes
+    screening_buckets ||--o{ initial_screenings : assigned
+
+    screening_preferences {
+        text skip_keywords
+        text known_properties
+        text skip_criteria
+        text deal_criteria
+        text digest_schedule
+    }
+    screening_buckets {
+        text name
+        text description
+        int rank
+        boolean is_pass
+        enum action
+    }
+    deals {
+        text source_message_id
+        jsonb extracted_data
+        boolean is_muted
+    }
+    initial_screenings {
+        enum decision
+        text reason
+        boolean digest_sent
+    }`} />
+
+`skip_keywords` and `known_properties` are one entry per line. `skip_criteria` and `deal_criteria` are free text that goes into the prompts. Onboarding a new firm, or a firm changing its strategy, is a data change and never a deploy. And because it's all just text, an agent with a handful of tools can safely edit it.
+
+## Result
+
+As of November 22, 2026:
+
+| | |
+|---|---|
+| Deal emails screened | 22,100 |
+| Asking prices screened, deduplicated by property | $57.2 billion |
+| Screened out automatically | 71% |
+| Passed along to the team | 29% |
+| Distinct brokers | 976 |
+| Median asking price | $6 million |
+
+The number I care about most isn't in that table, and it's zero. That's how many new tabs these teams had to keep open.
+
+## What I'd change at 10x the volume
+
+- **Acknowledge first, think later.** Today the webhook decides whether an email is a deal before it enqueues. At much higher volume I'd acknowledge the notification immediately and move that check behind the queue too.
+- **Turn the feedback links into a test set.** Every "Skip deals like this" and "Accept deals like this" click is a labeled example of the screener being wrong. I'd collect those and score every prompt change against them before it ships.
+- **Add Gmail.** Emails are already normalized into one shape before they hit the queue, so a second provider is a new adapter and not a new pipeline.
+
+## Takeaways
+
+I keep landing on the same idea from different directions. With frontstep.ai, the constraint was that we couldn't get API access, and the workaround turned out to be the product. With dealwire, nobody forced us into the inbox. We chose it, because the alternative was asking busy people to check one more dashboard, and I don't think that pitch works anymore. People increasingly expect software to do the work where they already are and tell them when it's done.
+
+That expectation is not free on the engineering side. There's no screen to hide behind, so the subscriptions, the retries, the feedback loops, and the model's guardrails all have to hold up in someone's actual inbox. But when it works, the best compliment the product gets is that nobody notices it's there.
+
+[^1]: Dealwire has grown since then. Based on what different clients needed, I've built other products inside it, including a land sourcing tool that analyzes public parcel data and a cold calling tool that skip traces phone numbers for residential assets. But it started as just a deal screener that lived inside the email inbox, and that's the part this post is about.
+
+[^2]: The dollar figure is the sum of asking prices across the 3,421 distinct properties where the email stated a price, counting each property once even when several brokers sent it. Nothing here closed through dealwire - this is deal flow that was screened. About 2,700 of the 22,100 emails were imported from older mail when a team first connected their inbox.
+
+[^3]: [_The Best Interface Is No Interface: The Simple Path to Brilliant Technology_](https://www.oreilly.com/library/view/the-best-interface/9780133890419/) by Golden Krishna (2015).

@@ -9,11 +9,18 @@ import { Paragraph } from "./Paragraph";
 import { motion } from "framer-motion";
 import { FaGithub, FaLink, FaYoutube } from "react-icons/fa";
 
-export const Projects = () => {
+export const Projects = ({
+  start = 0,
+  end,
+}: {
+  start?: number;
+  end?: number;
+} = {}) => {
+  const items = projects.slice(start, end);
   return (
     <div>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {projects.map((project: Project, idx: number) => (
+        {items.map((project: Project, idx: number) => (
           <motion.div
             key={project.slug}
             initial={{ opacity: 0, y: 12 }}

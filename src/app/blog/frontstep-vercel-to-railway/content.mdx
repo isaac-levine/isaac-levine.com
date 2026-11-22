@@ -2,7 +2,7 @@ import { BlogLayout } from "@/components/BlogLayout";
 
 export const meta = {
   date: "2025-07-08",
-  title: "[frontstep.ai] Migrating from a Serverless to Serverful Architecture",
+  title: "[frontstep.ai] Migrating from a serverless to serverful architecture",
   hidden: true,
 };
 
@@ -12,7 +12,7 @@ export default (props) => <BlogLayout meta={meta} {...props} />;
 
 Frontstep.ai is a platform that allows real estate agents and property managers to qualify new leads on autopilot. It integrates directly with Zillow and upon receiving a new Zillow lead for a property, instantly reaches out to the lead via SMS or Email, and qualifies them through natural back and forth conversation, based on the qualification questions that the realtor has configured for the property or for their team. It automatically detects when qualification questions have been answered, checks them off, and notifies the realtor when all qualification questions have been answered, and the lead is ready for a showing.
 
-## Starting Point
+## Starting point
 
 I built frontstep.ai with the now-classic Vercel, Next.js, and TypeScript stack. I chose this stack mainly because of how easy the development experience is, and without too much concern because I still didn't know exactly what I wanted frontstep.ai to be.
 
@@ -42,7 +42,7 @@ The frontend stack (Next.js, TypeScript, Tailwind) stayed exactly the same, but 
 
 On top of that, moving to a serverful architecture has also been a better fit for the growing number of webhook integrations we’ve been adding (Zillow, CRMs, calendars, etc). With serverless, handling these webhooks meant unpredictable cold starts and scaling issues, which could cause dropped or delayed events. With a persistent server on the other hand, webhooks land immediately, get processed reliably, and can maintain context between related events (e.g. several new messages come in within a few minutes from the same conversation).
 
-## Lesson Learned
+## Lesson learned
 
 Serverless is great. Vercel makes it insanely easy to get something live fast, and I think that’s a huge win for anyone testing an idea. For early prototypes or apps that don’t need real-time connections, it’s pretty much perfect. Even this website is a NextJS app deployed to Vercel.
 
