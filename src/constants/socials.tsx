@@ -1,6 +1,6 @@
 import {
   IconBrandLinkedin,
-  IconBrandTwitter,
+  IconBrandX,
   IconBrandGithub,
   IconBook,
 } from "@tabler/icons-react";
@@ -17,9 +17,9 @@ export const socials = [
     icon: IconBrandLinkedin,
   },
   {
-    href: "https://twitter.com/isaaclvn",
+    href: "https://x.com/isaaclvn",
     label: "",
-    icon: IconBrandTwitter,
+    icon: IconBrandX,
   },
   {
     href: "https://www.goodreads.com/user/show/168909888-isaac-levine",
