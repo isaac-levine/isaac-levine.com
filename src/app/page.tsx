@@ -27,7 +27,7 @@ export default async function Home() {
             I&apos;m a software engineer living in Boston, MA. I work at CarGurus, where I help build the product data platform, and I previously co-founded <a href="https://frontstep.ai" className="underline" target="_blank">frontstep.ai</a>, which was acquired by R&amp;M Capital in April 2026.
           </Paragraph>
           <Paragraph className="max-w-xl mt-4">
-            I&apos;ve worked across the stack at both startups and large companies, but these days I&apos;m focused on backend work and I&apos;m especially interested in distributed systems. You can find more of my work on my <a href="https://github.com/isaac-levine" className="underline" target="_blank">GitHub</a>.
+            I&apos;ve worked across the stack at both startups and large companies, but I&apos;m mainly focused on backend work and especially interested in distributed systems. You can find more of my work on my <a href="https://github.com/isaac-levine" className="underline" target="_blank">GitHub</a>.
           </Paragraph>
         </div>
         <Image
