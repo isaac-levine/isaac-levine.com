@@ -1,0 +1,74 @@
+import { BlogLayout } from "@/components/BlogLayout";
+
+export const meta = {
+  date: "2026-06-02",
+  title: "[frontstep.ai] I sold my first startup",
+};
+
+export default (props) => <BlogLayout meta={meta} {...props} />;
+
+We had a lot of people telling us Frontstep.ai was great and almost nobody negotiating price with us. I should've paid more attention to that.
+
+I sold Frontstep.ai, my first startup, a little over a year after I started it and within four months of launching it. R&M Capital bought it in an asset purchase in April 2026.
+
+It wasn't a venture exit. But we built something real, brokerages used it every day and a customer bought it. Most of what I learned came from being slow to tell the difference between people liking Frontstep.ai and people needing it.
+
+## What Frontstep.ai was
+
+Frontstep.ai was an AI agent that prequalified apartment leads. A renter would ask about a listing on Zillow and Frontstep.ai would reply right away inside the same chat, ask the questions a leasing agent would ask, and get them to a tour if they were a fit.
+
+The part I'm most proud of is the Zillow integration. Most agents weren't on a Zillow plan that came with API access, so I found another way into Zillow's native chat. The integration itself wasn't a hard technical problem. I think what made it work was the mindset of meeting customers where they already are, and they appreciated not having to change how they worked. I wrote a [post](/blog/how-i-hijacked-zillows-native-chat-system) on how I built it.
+
+By the time we sold it Frontstep.ai had handled 1,000+ conversations across 15+ brokerages, and about one in three leads got fully qualified without an agent touching the conversation.
+
+## How it started
+
+My brother was working as a real estate agent and I got a look at the software he used. This was late 2024. The big real estate CRMs had basically zero meaningful AI features, and the few that existed were bad enough to do more harm than good when they talked to actual leads.
+
+I was bored over winter break my senior year so I started building. I didn't know what exact problem I was solving. I just knew it'd be something with leads and it'd be built around AI. All I had by the end of break was a landing page with auth and a database, deployed.
+
+Back at school in January I pitched my roommate Noah on building something more serious. He took sales and I took the product.
+
+## Who actually picked up the phone
+
+The most productive thing we did was also the least technical. For the first few months of 2025 Noah and I called every real estate agent and brokerage that would pick up, with one goal: find a valuable problem.
+
+The surprise was how few picked up. Realtors blast their number everywhere and say they want inbound calls, and they're still really hard to reach. Later we found that investors managing large portfolios were just as easy to get on the phone, if not easier.
+
+I treated that as trivia at the time. It ended up being one of the reasons we pivoted. The people with the bigger problems and bigger budgets were one layer up from where we were selling, and they were the ones who'd actually get on a call with us.
+
+Our first beta customer really engaged with us and we shaped a lot of the early product around what he wanted. More brokerages came on after him.
+
+This is where I made the most mistakes. For most of a year I read compliments as demand. We had real customers and real usage, but the people saying the nicest things weren't the ones paying. A lot of the agents who told us it was awesome weren't that willing to pay for it, or didn't feel the pain badly enough to.
+
+The same thing happened outside of sales. We placed third out of 100+ teams in Northeastern's Husky Startup Challenge and won $1,500. We posted it on LinkedIn and everyone we knew told us it was awesome. At that point we hadn't shipped much, and it felt exactly like progress. It took me a while to see that none of it told us whether anyone needed the product.
+
+## Why we pivoted
+
+The goal was never to sell quickly. It was to solve a valuable problem and bootstrap a business that made money.
+
+Frontstep.ai worked, but prequalifying rental leads is a narrow market. And the more people we met in real estate, the more Noah and I cared about the investment and development side, where the problems are bigger and the buyers actually pick up. That's the side we built [dealwire](https://dealwire.ai) for, and I wrote a [post](/blog/how-i-screened-57b-in-deals-from-an-outlook-inbox) on how its deal screener works.
+
+We were doing all of this on nights and weekends. We couldn't do both, so we picked.
+
+## The sale
+
+R&M Capital started as a customer. We first got in front of them in November 2025.
+
+The people who complimented Frontstep.ai the most never paid for it. R&M never complimented it much, they just used it every day. They were the ones who offered to buy it.
+
+It was an asset purchase, so they bought the product and not a company with a team attached. Khoury College [wrote up the acquisition](https://www.khoury.northeastern.edu/these-khoury-alumni-are-changing-how-real-estate-agents-screen-potential-tenants/) if you want the outside version.
+
+## What I'd do differently
+
+I'd talk about price in the first or second conversation and treat a vague answer as a no. We waited way too long to find out who would actually pay.
+
+I'd pay attention to who's easy to reach. The fact that portfolio investors took our calls and leasing agents didn't was telling us where to sell, and it took us most of a year to listen.
+
+I'd work in a space I know, or with someone who does. Neither Noah nor I came from real estate and it made everything harder than it needed to be.
+
+## What's next
+
+Thanks to Noah for leading sales while I built, and to everyone who used Frontstep.ai and helped along the way.
+
+These days I'm learning a lot more about distributed systems and I'm still building things on the side because it hasn't stopped being fun yet.
