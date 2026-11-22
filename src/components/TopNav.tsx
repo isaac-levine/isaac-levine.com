@@ -81,11 +81,11 @@ export function TopNav() {
           {/* Left: headshot + name */}
           <Link href="/" className="flex items-center gap-3 no-underline group">
             <Image
-              src="/images/headshot.png"
+              src="/images/new-headshot.png"
               alt="Isaac Levine"
               height={38}
               width={38}
-              className="rounded-full object-cover object-top flex-shrink-0 ring-2 ring-transparent group-hover:ring-[var(--accent)] transition-all duration-200"
+              className="rounded-full object-cover object-top flex-shrink-0 saturate-[0.8] ring-2 ring-transparent group-hover:ring-[var(--accent)] transition-all duration-200"
             />
             <span
               className="font-semibold text-base tracking-tight"
